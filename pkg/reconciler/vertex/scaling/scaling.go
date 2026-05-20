@@ -278,13 +278,17 @@ func (s *Scaler) scaleOneVertex(ctx context.Context, key string, worker int) err
 	totalPending := int64(0)
 	for _, m := range vMetrics {
 		rate, existing := m.ProcessingRates["default"]
-		// If rate is not available, we skip scaling.
-		if !existing || rate.GetValue() < 0 { // Rate not available
-			log.Infof("Vertex %s has no rate information, skip scaling.", vertex.Name)
-			return nil
+		// If rate is not available, treat as zero so that pending-based scale-to-zero
+		// still works. Without this, a vertex that starts up but hasn't processed any
+		// data yet (forwarder_data_read_total not yet registered) gets permanently stuck
+		// at its current replica count because the autoscaler bails out on every cycle.
+		if !existing || rate.GetValue() < 0 {
+			log.Infof("Vertex %s has no rate information, treating as zero.", vertex.Name)
+			partitionRates = append(partitionRates, 0)
+		} else {
+			partitionRates = append(partitionRates, rate.GetValue())
+			totalRate += rate.GetValue()
 		}
-		partitionRates = append(partitionRates, rate.GetValue())
-		totalRate += rate.GetValue()
 
 		pending, existing := m.Pendings["default"]
 		if !existing || pending.GetValue() < 0 || pending.GetValue() == dfv1.PendingNotAvailable {
