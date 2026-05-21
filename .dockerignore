@@ -1,1 +1,5 @@
 rust/target
+justfile
+Containerfile
+Dockerfile
+.dockerignore
