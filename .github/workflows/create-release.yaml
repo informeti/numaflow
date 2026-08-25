@@ -1,0 +1,62 @@
+name: create-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: "Upstream release tag, e.g. v1.7.5"
+        required: true
+      revision:
+        description: "Release revision, bump to recreate the same upstream version"
+        default: "1"
+      dry_run:
+        description: "Verify the rebase without creating the tag"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    name: Rebase fork commits onto ${{ inputs.upstream_version }}
+    runs-on: ubuntu-26.04
+    outputs:
+      tag: ${{ steps.rebase.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Rebase
+        id: rebase
+        env:
+          UPSTREAM: ${{ inputs.upstream_version }}
+          TAG: ${{ inputs.upstream_version }}-${{ github.repository_owner }}.${{ inputs.revision }}
+        run: |
+          git fetch https://github.com/numaproj/numaflow.git \
+            "refs/heads/main:refs/remotes/upstream/main" \
+            "refs/tags/$UPSTREAM:refs/tags/$UPSTREAM"
+          base=$(git merge-base origin/rolling upstream/main)
+          git switch --detach origin/rolling
+          git rebase --onto "refs/tags/$UPSTREAM" "$base"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Tag
+        if: ${{ !inputs.dry_run }}
+        env:
+          TAG: ${{ steps.rebase.outputs.tag }}
+        run: |
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+
+  build:
+    needs: create
+    if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/build-push.yaml
+    with:
+      ref: ${{ needs.create.outputs.tag }}
+    permissions:
+      contents: read
+      packages: write
