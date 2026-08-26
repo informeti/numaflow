@@ -1,0 +1,41 @@
+name: synchronize
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Synchronize
+        env:
+          # https://github.com/actions/checkout/blob/v7/README.md#push-a-commit-using-the-built-in-token
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          main=$(git rev-parse origin/main)
+          rolling=$(git rev-parse origin/rolling)
+          git fetch https://github.com/numaproj/numaflow.git \
+            "refs/heads/main:refs/remotes/upstream/main"
+          git switch --detach origin/rolling
+          git rebase --onto upstream/main origin/main
+          git push --atomic \
+            "--force-with-lease=refs/heads/main:$main" \
+            "--force-with-lease=refs/heads/rolling:$rolling" \
+            origin upstream/main:main HEAD:rolling
+
+  build:
+    needs: synchronize
+    uses: ./.github/workflows/build-push.yaml
+    with:
+      ref: rolling
+    permissions:
+      contents: read
+      packages: write
