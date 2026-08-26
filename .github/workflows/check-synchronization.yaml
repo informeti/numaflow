@@ -1,0 +1,33 @@
+name: check-synchronization
+
+on:
+  push:
+    branches: [rolling]
+  schedule:
+    - cron: "55 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-synchronization
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: rolling
+
+      - name: Check synchronization
+        env:
+          GIT_COMMITTER_NAME: dummy
+          GIT_COMMITTER_EMAIL: dummy@localhost
+        run: |
+          git fetch https://github.com/numaproj/numaflow.git \
+            "refs/heads/main:refs/remotes/upstream/main"
+          git rebase --onto upstream/main origin/main
