@@ -4,6 +4,7 @@ on:
   push:
     branches: [rolling]
     tags: ["v*"]
+    paths-ignore: [".github/**"]
   workflow_call:
     inputs:
       ref:
