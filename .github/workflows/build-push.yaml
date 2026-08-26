@@ -18,7 +18,7 @@ permissions:
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/numaflow
   REF: ${{ inputs.ref || github.ref }}
-  TAG: ${{ inputs.ref || (github.ref_type == 'tag' && github.ref_name) || 'latest' }}
+  TAG: ${{ inputs.ref == 'rolling' && 'latest' || inputs.ref || (github.ref_type == 'tag' && github.ref_name) || 'latest' }}
 
 jobs:
   build:
