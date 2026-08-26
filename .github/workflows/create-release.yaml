@@ -34,6 +34,9 @@ jobs:
         env:
           UPSTREAM: ${{ inputs.upstream_version }}
           TAG: ${{ inputs.upstream_version }}-${{ github.repository_owner }}.${{ inputs.revision }}
+          # https://github.com/actions/checkout/blob/v7/README.md#push-a-commit-using-the-built-in-token
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
           git fetch https://github.com/numaproj/numaflow.git \
             "refs/heads/main:refs/remotes/upstream/main" \
