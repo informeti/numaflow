@@ -15,6 +15,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: build-push-${{ inputs.ref || github.ref_name }}
+  cancel-in-progress: true
+
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/numaflow
   REF: ${{ inputs.ref || github.ref }}
@@ -50,6 +54,7 @@ jobs:
           git_tag=
           [[ "$TAG" == latest ]] || git_tag="$TAG"
           docker build \
+            --provenance=false \
             --platform linux/${{ matrix.arch }} \
             --build-arg UPSTREAM_IMAGE="quay.io/numaproj/numaflow:$upstream" \
             --build-arg VERSION="$TAG" \
